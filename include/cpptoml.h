@@ -3296,10 +3296,19 @@ inline std::shared_ptr<table> parse_base_and_override_files(const std::string& f
     if (!file.is_open())
         throw parse_exception{filename + " could not be opened for parsing"};
     combined << file.rdbuf();
+    // Validate base separately to get accurate line numbers
+    parser p_base{combined, false, stringify_values};
     // The userfile is optional
     if (user_file.is_open())
     {
-        combined << user_file.rdbuf();
+        std::stringstream user;
+        user << user_file.rdbuf();
+        // Validate user override file separately to get accurate line numbers
+        parser p_user{user, false, stringify_values};
+        p_user.parse();
+
+        // Combine
+        combined << user.str();
     }
 
     parser p{combined, true, stringify_values};
