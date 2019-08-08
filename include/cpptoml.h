@@ -3277,6 +3277,25 @@ inline std::shared_ptr<table> parse_file(const std::string& filename)
     return p.parse();
 }
 
+/** Parse base and override TOML from istream's and return the root table of the merged result */
+inline std::shared_ptr<table> parse_base_and_override_files(const std::istream & base, const std::istream & override, bool stringify_values = false)
+{
+    std::stringstream combined;
+    combined << base.rdbuf();
+    // Validate base separately to get accurate line numbers
+    parser p_base{combined, false, stringify_values};
+    std::stringstream user;
+    user << override.rdbuf();
+    // Validate user override file separately to get accurate line numbers
+    parser p_user{user, false, stringify_values};
+    p_user.parse();
+    // Combine
+    combined << user.str();
+
+    parser p{combined, true, stringify_values};
+    return p.parse();
+}
+
 /**
  * Parse a base and an override TOML and return the root table of the merged result.
  */
