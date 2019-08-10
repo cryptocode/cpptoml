@@ -4,12 +4,16 @@
 int main(int argc, char* argv[])
 {
     std::shared_ptr<cpptoml::table> root = cpptoml::make_table();
+    root->document("Integer", "An integer");
     root->insert("Integer", 1234L);
     root->insert("Double", 1.234);
     root->insert("String", std::string("ABCD"));
 
     auto table = cpptoml::make_table();
+    table->document("ElementOne", "The first element");
     table->insert("ElementOne", 1L);
+
+    table->document("ElementOne", "The second element\nwith three lines of comments,\nand this is the last one");
     table->insert("ElementTwo", 2.0);
     table->insert("ElementThree", std::string("THREE"));
 
@@ -63,6 +67,8 @@ int main(int argc, char* argv[])
 
     root->insert("ArrayOfArrays", array_of_arrays);
 
-    std::cout << (*root);
+    cpptoml::toml_writer writer{ std::cout, "" };
+    root->accept (writer);
+
     return 0;
 }

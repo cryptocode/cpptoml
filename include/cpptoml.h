@@ -1552,6 +1552,14 @@ class table : public base
     }
 
     /**
+     * Adds documentation to a table key
+     */
+    void document(const std::string& key, std::string doc)
+    {
+        doc_[key] = doc;
+    }
+
+    /**
      * Adds an element to the keytable.
      */
     void insert(const std::string& key, const std::shared_ptr<base>& value)
@@ -1576,6 +1584,16 @@ class table : public base
     void erase(const std::string& key)
     {
         map_.erase(key);
+    }
+
+    bool has_doc (const std::string& key) const
+    {
+        return doc_.find(key) != doc_.end();
+    }
+
+    std::string doc (const std::string& key) const
+    {
+        return doc_.find(key)->second;
     }
 
   private:
@@ -1642,6 +1660,7 @@ class table : public base
     }
 
     string_to_base_map map_;
+    std::unordered_map<std::string, std::string> doc_;
 };
 
 /**
@@ -3414,6 +3433,20 @@ class toml_writer
     }
 
   public:
+
+    void replace_all(std::string &s, const std::string &search, const std::string &replace )
+    {
+        for(size_t pos = 0; ; pos += replace.length())
+        {
+            // Locate the substring to replace
+            pos = s.find(search, pos);
+            if(pos == std::string::npos)
+                break;
+            // Replace by erasing and inserting
+            s.erase(pos, search.length());
+            s.insert(pos, replace);
+        }
+    }
     /**
      * Output a base value of the TOML tree.
      */
@@ -3451,6 +3484,15 @@ class toml_writer
             if (i > 0)
                 endline();
 
+            auto key = values[i];
+            if (t.has_doc(key))
+            {
+                write ("\n# ");
+                std::string doc = t.doc(key);
+                replace_all (doc, "\n", "\n# ");
+                write (doc);
+                write ("\n");
+            }
             write_table_item_header(*t.get(values[i]));
             t.get(values[i])->accept(*this, false);
             path_.pop_back();
@@ -3626,6 +3668,7 @@ class toml_writer
         {
             indent();
 
+            endline();
             write("[");
 
             if (in_array)
