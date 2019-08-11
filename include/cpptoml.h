@@ -3668,7 +3668,7 @@ class toml_writer
         {
             indent();
 
-            endline();
+            write("\n");
             write("[");
 
             if (in_array)
