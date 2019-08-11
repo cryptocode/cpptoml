@@ -55,16 +55,10 @@ enum class parse_type
 
 class writer; // forward declaration
 class base;   // forward declaration
-#if defined(CPPTOML_USE_MAP)
+
 // a std::map will ensure that entries a sorted, albeit at a slight
 // performance penalty relative to the (default) unordered_map
 using string_to_base_map = std::map<std::string, std::shared_ptr<base>>;
-#else
-// by default an unordered_map is used for best performance as the
-// toml specification does not require entries to be sorted
-using string_to_base_map
-    = std::unordered_map<std::string, std::shared_ptr<base>>;
-#endif
 
 // if defined, `base` will retain type information in form of an enum class
 // such that static_cast can be used instead of dynamic_cast
