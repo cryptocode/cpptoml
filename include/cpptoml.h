@@ -3471,7 +3471,7 @@ class toml_writer
             }
         }
 
-        if (!all_children_tables)
+        if (!skip_empty_tables_ || !all_children_tables)
         {
             write_table_header(in_array);
         }
