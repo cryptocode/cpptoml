@@ -3428,6 +3428,12 @@ class toml_writer
 
   public:
 
+    /** Set whether or not empty parent table headers should be output */
+    void set_skip_empty_tables (bool enable)
+    {
+        skip_empty_tables_ = enable;
+    }
+
     void replace_all(std::string &s, const std::string &search, const std::string &replace )
     {
         for(size_t pos = 0; ; pos += replace.length())
@@ -3455,7 +3461,20 @@ class toml_writer
      */
     void visit(const table& t, bool in_array = false)
     {
-        write_table_header(in_array);
+        bool all_children_tables = true;
+        for (const auto& i : t)
+        {
+            if (!i.second->is_table())
+            {
+                all_children_tables  = false;
+                break;
+            }
+        }
+
+        if (!all_children_tables)
+        {
+            write_table_header(in_array);
+        }
         std::vector<std::string> values;
         std::vector<std::string> tables;
 
@@ -3767,6 +3786,7 @@ class toml_writer
     const std::string indent_;
     std::vector<std::string> path_;
     bool has_naked_endline_;
+    bool skip_empty_tables_{ true };
 };
 
 inline std::ostream& operator<<(std::ostream& stream, const base& b)
