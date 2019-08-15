@@ -1908,10 +1908,16 @@ inline std::istream& getline(std::istream& input, std::string& line)
 class parser
 {
   public:
+    enum merge_type {
+        none,
+        replace,
+        ignore
+    };
+
     /**
      * Parsers are constructed from streams.
      */
-    parser(std::istream& stream, bool allow_merge=false, bool stringify_values=false) : input_(stream), allow_merge_ (allow_merge), stringify_values_ (stringify_values)
+    parser(std::istream& stream, merge_type merge=merge_type::none, bool stringify_values=false) : input_(stream), merge_ (merge), stringify_values_ (stringify_values)
     {
         // nothing
     }
@@ -2054,7 +2060,7 @@ class parser
                 || std::any_of(curr_table->begin(), curr_table->end(),
                                is_value))
             {
-                if (!allow_merge_)
+                if (merge_ == merge_type::none)
                 {
                     throw_parse_exception("Redefinition of table " + full_table_name);
                 }
@@ -2199,13 +2205,21 @@ class parser
 
         auto key = parse_key(it, end, key_end, key_part_handler);
 
-        if (!allow_merge_ && curr_table->contains(key))
+        if (merge_ == merge_type::none && curr_table->contains(key))
             throw_parse_exception("Key " + key + " already present");
         if (it == end || *it != '=')
             throw_parse_exception("Value must follow after a '='");
         ++it;
         consume_whitespace(it, end);
-        curr_table->insert(key, parse_value(it, end));
+        if (merge_ == merge_type::ignore && curr_table->contains(key))
+        {
+            parse_value(it, end);
+        }
+        else
+        {
+            curr_table->insert(key, parse_value(it, end));
+        }
+        
         consume_whitespace(it, end);
     }
 
@@ -3265,7 +3279,7 @@ class parser
     }
 
     std::istream& input_;
-    bool allow_merge_;
+    merge_type merge_;
     bool stringify_values_;
     std::string line_;
     std::size_t line_number_ = 0;
@@ -3286,33 +3300,33 @@ inline std::shared_ptr<table> parse_file(const std::string& filename)
 #endif
     if (!file.is_open())
         throw parse_exception{filename + " could not be opened for parsing"};
-    parser p{file, false};
+    parser p{file, cpptoml::parser::merge_type::none};
     return p.parse();
 }
 
 /** Parse base and override TOML from istream's and return the root table of the merged result */
-inline std::shared_ptr<table> parse_base_and_override_files(const std::istream & base, const std::istream & override, bool stringify_values = false)
+inline std::shared_ptr<table> parse_base_and_override_files(const std::istream & base, const std::istream & override, cpptoml::parser::merge_type merge, bool stringify_values = false)
 {
     std::stringstream combined;
     combined << base.rdbuf();
     // Validate base separately to get accurate line numbers
-    parser p_base{combined, false, stringify_values};
+    parser p_base{combined, cpptoml::parser::merge_type::none, stringify_values};
     std::stringstream user;
     user << override.rdbuf();
     // Validate user override file separately to get accurate line numbers
-    parser p_user{user, false, stringify_values};
+    parser p_user{user, cpptoml::parser::merge_type::none, stringify_values};
     p_user.parse();
     // Combine
     combined << user.str();
 
-    parser p{combined, true, stringify_values};
+    parser p{combined, merge, stringify_values};
     return p.parse();
 }
 
 /**
  * Parse a base and an override TOML and return the root table of the merged result.
  */
-inline std::shared_ptr<table> parse_base_and_override_files(const std::string& filename, const std::string& user_filename, bool stringify_values = false)
+inline std::shared_ptr<table> parse_base_and_override_files(const std::string& filename, const std::string& user_filename, cpptoml::parser::merge_type merge, bool stringify_values = false)
 {
 #if defined(BOOST_NOWIDE_FSTREAM_INCLUDED_HPP)
     boost::nowide::ifstream file{filename.c_str()};
@@ -3329,21 +3343,21 @@ inline std::shared_ptr<table> parse_base_and_override_files(const std::string& f
         throw parse_exception{filename + " could not be opened for parsing"};
     combined << file.rdbuf();
     // Validate base separately to get accurate line numbers
-    parser p_base{combined, false, stringify_values};
+    parser p_base{combined, cpptoml::parser::merge_type::none, stringify_values};
     // The userfile is optional
     if (user_file.is_open())
     {
         std::stringstream user;
         user << user_file.rdbuf();
         // Validate user override file separately to get accurate line numbers
-        parser p_user{user, false, stringify_values};
+        parser p_user{user, cpptoml::parser::merge_type::none, stringify_values};
         p_user.parse();
 
         // Combine
         combined << user.str();
     }
 
-    parser p{combined, true, stringify_values};
+    parser p{combined, merge, stringify_values};
     return p.parse();
 }
 
